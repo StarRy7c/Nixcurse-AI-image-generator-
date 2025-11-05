@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -186,55 +187,81 @@
             100% { transform: rotate(360deg); }
         }
 
-        .history-section {
-            background: white;
-            padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-        }
-
-        .history-section h3 {
-            margin-bottom: 20px;
-            color: #333;
-        }
-
-        .history-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-            gap: 15px;
-        }
-
-        .history-item {
+        .error-section {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
             border-radius: 8px;
-            overflow: hidden;
-            cursor: pointer;
-            transition: transform 0.2s ease;
-        }
-
-        .history-item:hover {
-            transform: scale(1.05);
-        }
-
-        .history-item img {
-            width: 100%;
-            height: 150px;
-            object-fit: cover;
-        }
-
-        .notification {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 15px 25px;
-            background: #28a745;
-            color: white;
-            border-radius: 8px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            padding: 15px;
+            margin-top: 20px;
             display: none;
-            z-index: 1000;
         }
 
-        .error {
+        .error-section h4 {
+            color: #721c24;
+            margin-bottom: 10px;
+        }
+
+        .suggestions {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+
+        .suggestions h4 {
+            color: #0c5460;
+            margin-bottom: 10px;
+        }
+
+        .suggestion-list {
+            list-style: none;
+        }
+
+        .suggestion-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid #bee5eb;
+            cursor: pointer;
+            color: #0c5460;
+        }
+
+        .suggestion-list li:hover {
+            color: #667eea;
+        }
+
+        .api-status {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .status-online {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status-offline {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .online {
+            background: #28a745;
+        }
+
+        .offline {
             background: #dc3545;
         }
     </style>
@@ -248,13 +275,18 @@
 
         <div class="main-content">
             <div class="input-section">
+                <div class="api-status" id="apiStatus">
+                    <div class="status-dot" id="statusDot"></div>
+                    <span id="statusText">Checking API status...</span>
+                </div>
+
                 <div class="form-group">
                     <label for="prompt">Describe your image:</label>
                     <textarea 
                         id="prompt" 
                         class="prompt-input" 
-                        placeholder="Enter a detailed description of the image you want to generate. For example: 'A majestic dragon flying over a medieval castle at sunset with vibrant colors'"
-                    ></textarea>
+                        placeholder="Enter a detailed description. Example: 'A young person smiling with natural lighting, photorealistic'"
+                    >Young</textarea>
                 </div>
                 
                 <button id="generateBtn" class="generate-btn">
@@ -264,6 +296,27 @@
                 <div id="loading" class="loading">
                     <div class="spinner"></div>
                     <p>Generating your image... This may take a few seconds.</p>
+                </div>
+
+                <div class="suggestions">
+                    <h4>💡 Prompt Suggestions:</h4>
+                    <ul class="suggestion-list">
+                        <li onclick="useSuggestion('A young person smiling with natural lighting')">A young person smiling with natural lighting</li>
+                        <li onclick="useSuggestion('Young athlete running in a field at sunset')">Young athlete running in a field at sunset</li>
+                        <li onclick="useSuggestion('Portrait of a young person with detailed facial features')">Portrait of a young person with detailed facial features</li>
+                        <li onclick="useSuggestion('Young artist painting in a sunny studio')">Young artist painting in a sunny studio</li>
+                    </ul>
+                </div>
+
+                <div id="errorSection" class="error-section">
+                    <h4>⚠️ Generation Failed</h4>
+                    <p id="errorMessage">The image could not be generated. This might be because:</p>
+                    <ul>
+                        <li>The API server is temporarily unavailable</li>
+                        <li>Your prompt was too short or unclear</li>
+                        <li>Server is experiencing high load</li>
+                    </ul>
+                    <p style="margin-top: 10px;"><strong>Try:</strong> Using a more detailed prompt or try again later.</p>
                 </div>
             </div>
 
@@ -279,17 +332,6 @@
                 </button>
             </div>
         </div>
-
-        <div class="history-section">
-            <h3>Recently Generated Images</h3>
-            <div id="historyGrid" class="history-grid">
-                <!-- History items will be added here dynamically -->
-            </div>
-        </div>
-    </div>
-
-    <div id="notification" class="notification">
-        Image downloaded successfully!
     </div>
 
     <script>
@@ -302,59 +344,170 @@
                 this.generatedImage = document.getElementById('generatedImage');
                 this.placeholder = document.getElementById('placeholder');
                 this.loading = document.getElementById('loading');
-                this.notification = document.getElementById('notification');
-                this.historyGrid = document.getElementById('historyGrid');
+                this.errorSection = document.getElementById('errorSection');
+                this.apiStatus = document.getElementById('apiStatus');
+                this.statusDot = document.getElementById('statusDot');
+                this.statusText = document.getElementById('statusText');
                 
                 this.init();
             }
 
-            init() {
+            async init() {
                 this.generateBtn.addEventListener('click', () => this.generateImage());
                 this.downloadBtn.addEventListener('click', () => this.downloadImage());
-                this.loadHistory();
+                
+                // Check API status on load
+                await this.checkApiStatus();
+            }
+
+            async checkApiStatus() {
+                try {
+                    // Simple HEAD request to check if API is reachable
+                    const response = await fetch(this.apiBaseUrl + '?prompt=test', { 
+                        method: 'HEAD',
+                        mode: 'no-cors'
+                    });
+                    this.setApiStatus(true);
+                } catch (error) {
+                    this.setApiStatus(false);
+                }
+            }
+
+            setApiStatus(online) {
+                if (online) {
+                    this.apiStatus.className = 'api-status status-online';
+                    this.statusDot.className = 'status-dot online';
+                    this.statusText.textContent = 'API Server: Online';
+                } else {
+                    this.apiStatus.className = 'api-status status-offline';
+                    this.statusDot.className = 'status-dot offline';
+                    this.statusText.textContent = 'API Server: Offline - Using demo mode';
+                }
             }
 
             async generateImage() {
                 const prompt = this.promptInput.value.trim();
                 
                 if (!prompt) {
-                    this.showNotification('Please enter a prompt', true);
+                    this.showError('Please enter a prompt');
+                    return;
+                }
+
+                // Validate prompt length
+                if (prompt.length < 3) {
+                    this.showError('Please enter a more detailed prompt (at least 3 characters)');
                     return;
                 }
 
                 this.setLoading(true);
+                this.hideError();
 
                 try {
                     const apiUrl = `${this.apiBaseUrl}?prompt=${encodeURIComponent(prompt)}`;
                     
-                    const response = await fetch(apiUrl);
+                    // Add timeout to prevent hanging requests
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
                     
+                    const response = await fetch(apiUrl, {
+                        signal: controller.signal
+                    });
+                    
+                    clearTimeout(timeoutId);
+
                     if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
+                        throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+                    }
+
+                    // Check if response is an image
+                    const contentType = response.headers.get('content-type');
+                    if (!contentType || !contentType.includes('image')) {
+                        // If not an image, check if it's an error message
+                        const text = await response.text();
+                        throw new Error(text || 'Server returned non-image response');
                     }
 
                     const blob = await response.blob();
+                    
+                    // Check if blob is actually an image
+                    if (blob.size === 0) {
+                        throw new Error('Empty image received');
+                    }
+
                     const imageUrl = URL.createObjectURL(blob);
                     
+                    // Verify the image loads
+                    await this.verifyImageLoads(imageUrl);
+                    
                     this.displayImage(imageUrl);
-                    this.saveToHistory(prompt, imageUrl);
-                    this.showNotification('Image generated successfully!');
+                    this.showSuccess('Image generated successfully!');
                     
                 } catch (error) {
                     console.error('Error generating image:', error);
-                    this.showNotification('Failed to generate image. Please try again.', true);
+                    this.showError(this.getErrorMessage(error));
+                    // Fallback to demo image
+                    this.useDemoImage(prompt);
                 } finally {
                     this.setLoading(false);
                 }
             }
 
-            displayImage(imageUrl) {
-                this.generatedImage.src = imageUrl;
-                this.generatedImage.style.display = 'block';
-                this.placeholder.style.display = 'none';
-                this.downloadBtn.style.display = 'block';
+            async verifyImageLoads(imageUrl) {
+                return new Promise((resolve, reject) => {
+                    const img = new Image();
+                    img.onload = resolve;
+                    img.onerror = () => reject(new Error('Generated image failed to load'));
+                    img.src = imageUrl;
+                });
+            }
+
+            getErrorMessage(error) {
+                if (error.name === 'AbortError') {
+                    return 'Request timed out. The server might be busy. Please try again.';
+                }
+                if (error.message.includes('Failed to fetch')) {
+                    return 'Cannot connect to the image generation server. Please check your internet connection.';
+                }
+                return error.message || 'Failed to generate image. Please try again with a different prompt.';
+            }
+
+            useDemoImage(prompt) {
+                // Create a simple demo image as fallback
+                const canvas = document.createElement('canvas');
+                canvas.width = 512;
+                canvas.height = 512;
+                const ctx = canvas.getContext('2d');
                 
-                // Store the current image URL for download
+                // Create gradient background
+                const gradient = ctx.createLinearGradient(0, 0, 512, 512);
+                gradient.addColorStop(0, '#667eea');
+                gradient.addColorStop(1, '#764ba2');
+                
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, 512, 512);
+                
+                // Add text
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 24px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('Demo Image', 256, 200);
+                ctx.font = '18px Arial';
+                ctx.fillText('Prompt: ' + prompt.substring(0, 50), 256, 250);
+                ctx.fillText('API Server Unavailable', 256, 300);
+                
+                const imageUrl = canvas.toDataURL('image/png');
+                this.displayImage(imageUrl);
+                this.showSuccess('Demo image created (API unavailable)');
+            }
+
+            displayImage(imageUrl) {
+                this.generatedImage.onload = () => {
+                    this.generatedImage.style.display = 'block';
+                    this.placeholder.style.display = 'none';
+                    this.downloadBtn.style.display = 'block';
+                };
+                
+                this.generatedImage.src = imageUrl;
                 this.currentImageUrl = imageUrl;
                 this.currentPrompt = this.promptInput.value.trim();
             }
@@ -365,7 +518,6 @@
                 const link = document.createElement('a');
                 link.href = this.currentImageUrl;
                 
-                // Create a filename from the prompt
                 const filename = this.currentPrompt
                     .toLowerCase()
                     .replace(/[^a-z0-9]/g, '_')
@@ -375,8 +527,6 @@
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
-                
-                this.showNotification('Image downloaded successfully!');
             }
 
             setLoading(isLoading) {
@@ -385,76 +535,35 @@
                 this.generateBtn.textContent = isLoading ? 'Generating...' : 'Generate Image';
             }
 
-            showNotification(message, isError = false) {
-                this.notification.textContent = message;
-                this.notification.className = `notification ${isError ? 'error' : ''}`;
-                this.notification.style.display = 'block';
-                
-                setTimeout(() => {
-                    this.notification.style.display = 'none';
-                }, 3000);
+            showError(message) {
+                this.errorSection.style.display = 'block';
+                document.getElementById('errorMessage').textContent = message;
             }
 
-            saveToHistory(prompt, imageUrl) {
-                const history = this.getHistory();
-                const historyItem = {
-                    prompt,
-                    imageUrl,
-                    timestamp: new Date().toISOString()
-                };
-                
-                history.unshift(historyItem);
-                
-                // Keep only last 12 images
-                if (history.length > 12) {
-                    history.splice(12);
-                }
-                
-                localStorage.setItem('imageGenerationHistory', JSON.stringify(history));
-                this.loadHistory();
+            hideError() {
+                this.errorSection.style.display = 'none';
             }
 
-            getHistory() {
-                return JSON.parse(localStorage.getItem('imageGenerationHistory') || '[]');
-            }
-
-            loadHistory() {
-                const history = this.getHistory();
-                this.historyGrid.innerHTML = '';
-
-                history.forEach((item, index) => {
-                    const historyItem = document.createElement('div');
-                    historyItem.className = 'history-item';
-                    historyItem.innerHTML = `
-                        <img src="${item.imageUrl}" alt="${item.prompt}" title="${item.prompt}">
-                    `;
-                    
-                    historyItem.addEventListener('click', () => {
-                        this.promptInput.value = item.prompt;
-                        this.displayImage(item.imageUrl);
-                    });
-                    
-                    this.historyGrid.appendChild(historyItem);
-                });
+            showSuccess(message) {
+                // You could add a success notification here
+                console.log('Success:', message);
             }
         }
 
-        // Initialize the application when the page loads
+        // Helper function for suggestions
+        function useSuggestion(prompt) {
+            document.getElementById('prompt').value = prompt;
+        }
+
+        // Initialize the application
         document.addEventListener('DOMContentLoaded', () => {
             new ImageGenerator();
         });
 
-        // Add some example prompts when clicking on the input
-        document.getElementById('prompt').addEventListener('click', function() {
-            if (!this.value) {
-                const examples = [
-                    "A cyberpunk cityscape at night with neon lights and flying cars",
-                    "A serene landscape with mountains and a lake at golden hour",
-                    "A fantasy castle floating in the clouds with dragons",
-                    "A cute cat wearing a wizard hat and holding a magic wand",
-                    "An astronaut exploring an alien jungle with strange plants"
-                ];
-                this.placeholder = examples[Math.floor(Math.random() * examples.length)];
+        // Add enter key support
+        document.getElementById('prompt').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && e.ctrlKey) {
+                document.getElementById('generateBtn').click();
             }
         });
     </script>
