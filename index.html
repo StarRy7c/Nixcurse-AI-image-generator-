@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Image Generator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .input-section {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .output-section {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .prompt-input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        .prompt-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .generate-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .generate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .generate-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .image-container {
+            width: 100%;
+            max-width: 512px;
+            height: 512px;
+            border: 2px dashed #e1e5e9;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            overflow: hidden;
+            background: #f8f9fa;
+        }
+
+        .generated-image {
+            max-width: 100%;
+            max-height: 100%;
+            display: none;
+        }
+
+        .placeholder-text {
+            color: #6c757d;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .download-btn {
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            display: none;
+        }
+
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .history-section {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .history-section h3 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .history-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+        }
+
+        .history-item {
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .history-item:hover {
+            transform: scale(1.05);
+        }
+
+        .history-item img {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            background: #28a745;
+            color: white;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            display: none;
+            z-index: 1000;
+        }
+
+        .error {
+            background: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎨 AI Image Generator</h1>
+            <p>Transform your imagination into stunning visuals</p>
+        </div>
+
+        <div class="main-content">
+            <div class="input-section">
+                <div class="form-group">
+                    <label for="prompt">Describe your image:</label>
+                    <textarea 
+                        id="prompt" 
+                        class="prompt-input" 
+                        placeholder="Enter a detailed description of the image you want to generate. For example: 'A majestic dragon flying over a medieval castle at sunset with vibrant colors'"
+                    ></textarea>
+                </div>
+                
+                <button id="generateBtn" class="generate-btn">
+                    Generate Image
+                </button>
+
+                <div id="loading" class="loading">
+                    <div class="spinner"></div>
+                    <p>Generating your image... This may take a few seconds.</p>
+                </div>
+            </div>
+
+            <div class="output-section">
+                <div class="image-container">
+                    <div id="placeholder" class="placeholder-text">
+                        Your generated image will appear here
+                    </div>
+                    <img id="generatedImage" class="generated-image" alt="Generated image">
+                </div>
+                <button id="downloadBtn" class="download-btn">
+                    📥 Download Image
+                </button>
+            </div>
+        </div>
+
+        <div class="history-section">
+            <h3>Recently Generated Images</h3>
+            <div id="historyGrid" class="history-grid">
+                <!-- History items will be added here dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <div id="notification" class="notification">
+        Image downloaded successfully!
+    </div>
+
+    <script>
+        class ImageGenerator {
+            constructor() {
+                this.apiBaseUrl = 'http://64.227.155.90:5000/api/generate';
+                this.generateBtn = document.getElementById('generateBtn');
+                this.downloadBtn = document.getElementById('downloadBtn');
+                this.promptInput = document.getElementById('prompt');
+                this.generatedImage = document.getElementById('generatedImage');
+                this.placeholder = document.getElementById('placeholder');
+                this.loading = document.getElementById('loading');
+                this.notification = document.getElementById('notification');
+                this.historyGrid = document.getElementById('historyGrid');
+                
+                this.init();
+            }
+
+            init() {
+                this.generateBtn.addEventListener('click', () => this.generateImage());
+                this.downloadBtn.addEventListener('click', () => this.downloadImage());
+                this.loadHistory();
+            }
+
+            async generateImage() {
+                const prompt = this.promptInput.value.trim();
+                
+                if (!prompt) {
+                    this.showNotification('Please enter a prompt', true);
+                    return;
+                }
+
+                this.setLoading(true);
+
+                try {
+                    const apiUrl = `${this.apiBaseUrl}?prompt=${encodeURIComponent(prompt)}`;
+                    
+                    const response = await fetch(apiUrl);
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const blob = await response.blob();
+                    const imageUrl = URL.createObjectURL(blob);
+                    
+                    this.displayImage(imageUrl);
+                    this.saveToHistory(prompt, imageUrl);
+                    this.showNotification('Image generated successfully!');
+                    
+                } catch (error) {
+                    console.error('Error generating image:', error);
+                    this.showNotification('Failed to generate image. Please try again.', true);
+                } finally {
+                    this.setLoading(false);
+                }
+            }
+
+            displayImage(imageUrl) {
+                this.generatedImage.src = imageUrl;
+                this.generatedImage.style.display = 'block';
+                this.placeholder.style.display = 'none';
+                this.downloadBtn.style.display = 'block';
+                
+                // Store the current image URL for download
+                this.currentImageUrl = imageUrl;
+                this.currentPrompt = this.promptInput.value.trim();
+            }
+
+            downloadImage() {
+                if (!this.currentImageUrl) return;
+
+                const link = document.createElement('a');
+                link.href = this.currentImageUrl;
+                
+                // Create a filename from the prompt
+                const filename = this.currentPrompt
+                    .toLowerCase()
+                    .replace(/[^a-z0-9]/g, '_')
+                    .substring(0, 50) + '.png';
+                
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                this.showNotification('Image downloaded successfully!');
+            }
+
+            setLoading(isLoading) {
+                this.generateBtn.disabled = isLoading;
+                this.loading.style.display = isLoading ? 'block' : 'none';
+                this.generateBtn.textContent = isLoading ? 'Generating...' : 'Generate Image';
+            }
+
+            showNotification(message, isError = false) {
+                this.notification.textContent = message;
+                this.notification.className = `notification ${isError ? 'error' : ''}`;
+                this.notification.style.display = 'block';
+                
+                setTimeout(() => {
+                    this.notification.style.display = 'none';
+                }, 3000);
+            }
+
+            saveToHistory(prompt, imageUrl) {
+                const history = this.getHistory();
+                const historyItem = {
+                    prompt,
+                    imageUrl,
+                    timestamp: new Date().toISOString()
+                };
+                
+                history.unshift(historyItem);
+                
+                // Keep only last 12 images
+                if (history.length > 12) {
+                    history.splice(12);
+                }
+                
+                localStorage.setItem('imageGenerationHistory', JSON.stringify(history));
+                this.loadHistory();
+            }
+
+            getHistory() {
+                return JSON.parse(localStorage.getItem('imageGenerationHistory') || '[]');
+            }
+
+            loadHistory() {
+                const history = this.getHistory();
+                this.historyGrid.innerHTML = '';
+
+                history.forEach((item, index) => {
+                    const historyItem = document.createElement('div');
+                    historyItem.className = 'history-item';
+                    historyItem.innerHTML = `
+                        <img src="${item.imageUrl}" alt="${item.prompt}" title="${item.prompt}">
+                    `;
+                    
+                    historyItem.addEventListener('click', () => {
+                        this.promptInput.value = item.prompt;
+                        this.displayImage(item.imageUrl);
+                    });
+                    
+                    this.historyGrid.appendChild(historyItem);
+                });
+            }
+        }
+
+        // Initialize the application when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new ImageGenerator();
+        });
+
+        // Add some example prompts when clicking on the input
+        document.getElementById('prompt').addEventListener('click', function() {
+            if (!this.value) {
+                const examples = [
+                    "A cyberpunk cityscape at night with neon lights and flying cars",
+                    "A serene landscape with mountains and a lake at golden hour",
+                    "A fantasy castle floating in the clouds with dragons",
+                    "A cute cat wearing a wizard hat and holding a magic wand",
+                    "An astronaut exploring an alien jungle with strange plants"
+                ];
+                this.placeholder = examples[Math.floor(Math.random() * examples.length)];
+            }
+        });
+    </script>
+</body>
+</html>
